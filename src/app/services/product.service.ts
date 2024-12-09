@@ -23,9 +23,24 @@ import { environment } from 'src/environments/environment';
 export class ProductService {
   private baseUrl: string = `${environment.apiUrl}/products`;
   products$: Observable<Product[]>;
+  mostExpensiveProduct$: Observable<Product>
 
   constructor(private http: HttpClient) {
     this.initProducts();
+    this.initMostExpensiveProduct();
+  }
+
+  private initMostExpensiveProduct() {
+    this.mostExpensiveProduct$ =
+      this
+      .products$
+      .pipe(
+        map(products => [...products].sort((p1, p2) => p1.price > p2.price ? -1 : 1)),
+        // [{p1}, {p2}, {p3}]
+        mergeAll(),
+        // {p1}, {p2}, {p3}
+        first()
+      )
   }
 
   initProducts() {

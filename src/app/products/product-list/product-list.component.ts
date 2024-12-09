@@ -18,8 +18,11 @@ export class ProductListComponent implements OnInit {
 
   title: string = 'Products';
   selectedProduct: Product;
-  products$: Observable<Product[]>;
   errorMessage;
+
+  products$: Observable<Product[]>
+  productsNumber$: Observable<number>
+  mostExpensiveProduct$: Observable<Product>
 
   constructor(
     private productService: ProductService,
@@ -30,7 +33,18 @@ export class ProductListComponent implements OnInit {
   ngOnInit(): void {
     this.products$ = this
                       .productService
-                      .products$;
+                      .products$
+
+    this.productsNumber$ = this
+                              .products$
+                              .pipe(
+                                map(products => products.length),
+                                startWith(0)
+                              )
+
+    this.mostExpensiveProduct$ = this
+                                    .productService
+                                    .mostExpensiveProduct$;
   }
 
   get favourites(): number {
