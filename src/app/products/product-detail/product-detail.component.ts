@@ -15,7 +15,7 @@ import { UpperCasePipe, CurrencyPipe, DatePipe } from '@angular/common';
 })
 export class ProductDetailComponent implements OnInit {
 
-  @Input() product: Product;
+ product: Product;
 
   constructor(
     private favouriteService: FavouriteService,

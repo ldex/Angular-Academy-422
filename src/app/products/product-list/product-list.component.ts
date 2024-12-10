@@ -1,7 +1,8 @@
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { FormControl } from '@angular/forms';
-import { Observable, EMPTY, combineLatest, Subscription, tap, catchError, startWith, count, map, debounceTime, filter } from 'rxjs';
+import { Observable, EMPTY, combineLatest, Subscription, tap, catchError, startWith, count, map, debounceTime, filter, timer } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop'
 
 import { Product } from '../product.interface';
 import { ProductService } from '../../services/product.service';
@@ -14,11 +15,25 @@ import { AsyncPipe, UpperCasePipe, SlicePipe, CurrencyPipe } from '@angular/comm
     styleUrls: ['./product-list.component.css'],
     imports: [RouterLink, AsyncPipe, UpperCasePipe, SlicePipe, CurrencyPipe]
 })
-export class ProductListComponent implements OnInit {
+export class ProductListComponent {
 
   title: string = 'Products';
   selectedProduct: Product;
   errorMessage;
+  autoRefreshEnabled = false;
+
+  switchAutoRefresh() {
+    this.autoRefreshEnabled = !this.autoRefreshEnabled
+  }
+
+  private autoRefreshList() {
+    timer(0, 2000) // auto-refresh interval in ms
+        .pipe(
+          takeUntilDestroyed(),
+          filter(() => this.autoRefreshEnabled), // only if auto-refresh checkbox is checked
+          tap(() => this.reset())
+    ).subscribe();
+  }
 
   products$: Observable<Product[]>
   productsNumber$: Observable<number>
@@ -28,23 +43,21 @@ export class ProductListComponent implements OnInit {
     private productService: ProductService,
     private favouriteService: FavouriteService,
     private router: Router) {
-  }
+      this.products$ = this
+      .productService
+      .products$
 
-  ngOnInit(): void {
-    this.products$ = this
-                      .productService
-                      .products$
+      this.productsNumber$ = this
+              .products$
+              .pipe(
+                map(products => products.length),
+                startWith(0)
+              )
 
-    this.productsNumber$ = this
-                              .products$
-                              .pipe(
-                                map(products => products.length),
-                                startWith(0)
-                              )
-
-    this.mostExpensiveProduct$ = this
-                                    .productService
-                                    .mostExpensiveProduct$;
+      this.mostExpensiveProduct$ = this
+                    .productService
+                    .mostExpensiveProduct$;
+      this.autoRefreshList()
   }
 
   get favourites(): number {
@@ -71,6 +84,10 @@ export class ProductListComponent implements OnInit {
     this.selectedProduct = null;
   }
 
+  loadMore() {
+    this.productService.initProducts()
+  }
+
   onSelect(product: Product) {
     this.selectedProduct = product;
     this.router.navigateByUrl('/products/' + product.id);
@@ -78,7 +95,7 @@ export class ProductListComponent implements OnInit {
 
   reset() {
     this.productService.resetList();
-    this.router.navigateByUrl('/products'); // self navigation to force data update
+    this.resetPagination()
   }
 
   resetPagination() {
